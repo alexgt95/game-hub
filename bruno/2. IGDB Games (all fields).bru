@@ -1,0 +1,29 @@
+meta {
+  name: 2. IGDB Games (all fields)
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://api.igdb.com/v4/games
+  body: text
+  auth: none
+}
+
+headers {
+  Client-ID: {{clientId}}
+  Authorization: Bearer {{accessToken}}
+  Accept: application/json
+}
+
+body:text {
+  fields *; limit 3;
+}
+
+docs {
+  # Where this comes from in the repo
+  - URL: server/igdb.ts → fetchGames → https://api.igdb.com/v4/games
+  - Headers: Client-ID + Authorization Bearer (same file)
+  - Production query is narrower (id, name, cover, platforms…). `fields *;` explores everything.
+  - Run request 1 first so accessToken is set.
+}

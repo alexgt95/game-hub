@@ -1,0 +1,23 @@
+meta {
+  name: 5. Local proxy (what the app gets)
+  type: http
+  seq: 5
+}
+
+get {
+  url: http://localhost:5173/api/games
+  body: none
+  auth: none
+}
+
+docs {
+  # The exact response the browser receives
+  Byte-for-byte what useGames() gets. Requires `npm run dev` to be running.
+
+  - Middleware: server/igdb.ts -> server.middlewares.use("/api/games", ...)
+  - Consumed by: src/services/api-client.ts (baseURL '/api') + src/hooks/useGames.ts
+  - Shape: { count, results: [...20 games...], source: "igdb" }
+
+  No Client-ID or Bearer needed here: the Vite plugin adds them server-side.
+  Tip: use the funnel filter in the response pane with  $.results[*].name
+}

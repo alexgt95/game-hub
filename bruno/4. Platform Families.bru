@@ -1,0 +1,25 @@
+meta {
+  name: 4. Platform Families
+  type: http
+  seq: 4
+}
+
+post {
+  url: https://api.igdb.com/v4/platform_families
+  body: text
+  auth: none
+}
+
+headers {
+  Client-ID: {{clientId}}
+  Authorization: Bearer {{accessToken}}
+  Accept: application/json
+}
+
+body:text {
+  fields name,slug; limit 50; sort id asc;
+}
+
+docs {
+  Source for FAMILY_TO_PARENT in src/services/platforms.ts (ids 1–5).
+}

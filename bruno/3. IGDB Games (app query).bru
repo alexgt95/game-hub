@@ -1,0 +1,25 @@
+meta {
+  name: 3. IGDB Games (app query)
+  type: http
+  seq: 3
+}
+
+post {
+  url: https://api.igdb.com/v4/games
+  body: text
+  auth: none
+}
+
+headers {
+  Client-ID: {{clientId}}
+  Authorization: Bearer {{accessToken}}
+  Accept: application/json
+}
+
+body:text {
+  fields id,name,cover.image_id,platforms.name,platforms.abbreviation,platforms.slug,platforms.platform_family; sort rating_count desc; where rating_count != null & cover != null; limit 20;
+}
+
+docs {
+  Exact body string used by server/igdb.ts → fetchGames.
+}

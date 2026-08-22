@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import apiClient from "../services/api-client";
+import { Platform } from "../services/platforms";
 
-interface Game {
+export interface Game {
     id: number;
     name: string;
+    cover?: { id: number; image_id: string };
+    platforms?: Platform[];
 }
 
 interface FetchGamesResponse {
@@ -39,14 +42,14 @@ const useGames = () => {
             setError(message);
             setStatus('error');
             console.error('[igdb] failed', message);
-
-        return () => abortController.abort();
         })
         .finally(() => {
             if (!abortController.signal.aborted) {
-                setStatus('connected');
+                // keep status as set by then/catch
             }
         });
+
+        return () => abortController.abort();
     }, []);
 
     return { games, source, status, error };

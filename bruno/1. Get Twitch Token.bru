@@ -1,0 +1,24 @@
+meta {
+  name: 1. Get Twitch Token
+  type: http
+  seq: 1
+}
+
+post {
+  url: https://id.twitch.tv/oauth2/token?client_id={{clientId}}&client_secret={{clientSecret}}&grant_type=client_credentials
+  body: none
+  auth: none
+}
+
+docs {
+  # Where these values come from in the repo
+  - URL: server/igdb.ts → getTwitchToken → https://id.twitch.tv/oauth2/token
+  - clientId / clientSecret: .env (TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET)
+  - Same vars loaded in vite.config.ts via loadEnv and passed into igdbApi(env)
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.access_token) {
+    bru.setEnvVar("accessToken", res.body.access_token);
+  }
+}

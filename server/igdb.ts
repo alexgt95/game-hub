@@ -3,6 +3,7 @@ import type { Plugin } from "vite";
 interface IgdbGame {
   id: number;
   name: string;
+  cover?: { id: number; image_id: string };
 }
 
 interface TokenCache {
@@ -53,7 +54,7 @@ async function fetchGames(clientId: string, clientSecret: string) {
       "Client-ID": clientId,
       Authorization: `Bearer ${accessToken}`,
     },
-    body: "fields id,name; sort rating_count desc; where rating_count != null; limit 20;",
+    body: "fields id,name,cover.image_id; sort rating_count desc; where rating_count != null & cover != null; limit 20;",
   });
 
   if (!response.ok) {
