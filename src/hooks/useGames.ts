@@ -7,6 +7,7 @@ export interface Game {
     name: string;
     cover?: { id: number; image_id: string };
     platforms?: Platform[];
+    aggregated_rating?: number;
 }
 
 interface FetchGamesResponse {
@@ -28,6 +29,7 @@ const useGames = () => {
 
         apiClient.get<FetchGamesResponse>('/games', { signal: abortController.signal })
         .then(res => {
+            setError('');
             setGames(res.data.results);
             setSource(res.data.source ?? 'unknown');
             setStatus('connected');
@@ -38,6 +40,8 @@ const useGames = () => {
             });
         })
         .catch(err => {
+            if (abortController.signal.aborted) return;
+
             const message = err.response?.data?.error || err.message;
             setError(message);
             setStatus('error');

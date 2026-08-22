@@ -25,7 +25,7 @@ interface PlatformIconListProps {
 
 const PlatformIconList = ({ platforms }: PlatformIconListProps) => {
   return (
-    <HStack gap={2} my={2}>
+    <HStack gap={2}>
       {getParentPlatforms(platforms).map((parent) => (
         <Icon key={parent} as={ICONS[parent]} color="gray.500" />
       ))}

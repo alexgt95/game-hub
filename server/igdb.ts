@@ -4,6 +4,14 @@ interface IgdbGame {
   id: number;
   name: string;
   cover?: { id: number; image_id: string };
+  platforms?: Array<{
+    id: number;
+    name: string;
+    slug: string;
+    abbreviation?: string;
+    platform_family?: number;
+  }>;
+  aggregated_rating?: number;
 }
 
 interface TokenCache {
@@ -54,7 +62,7 @@ async function fetchGames(clientId: string, clientSecret: string) {
       "Client-ID": clientId,
       Authorization: `Bearer ${accessToken}`,
     },
-    body: "fields id,name,cover.image_id; sort rating_count desc; where rating_count != null & cover != null; limit 20;",
+    body: "fields *, id,name,cover.image_id,platforms.name,platforms.abbreviation,platforms.slug,platforms.platform_family; sort rating_count desc; where rating_count != null & cover != null; limit 20;",
   });
 
   if (!response.ok) {
