@@ -1,20 +1,29 @@
 import { Card, HStack, Image } from '@chakra-ui/react';
 import { Game } from '../hooks/useGames';
-import getCoverUrl from '../services/image-url';
+import { COVER_ASPECT_RATIO, getCoverSources } from '../services/image-url';
 import CriticScore from './CriticScore';
 import PlatformIconList from './PlatformIconList';
 
 interface GameCardProps {
     game: Game;
+    loading?: 'lazy' | 'eager';
 }
 
-const GameCard = ({ game }: GameCardProps) => {
-  const cover = getCoverUrl(game.cover?.image_id);
+const GameCard = ({ game, loading = 'lazy' }: GameCardProps) => {
+  const cover = getCoverSources(game.cover?.image_id);
 
   return (
     <Card.Root borderRadius={10} overflow='hidden'>
       {cover && (
-        <Image src={cover} alt={game.name} aspectRatio={16 / 9} fit='cover' />
+        <Image
+          src={cover.src}
+          srcSet={cover.srcSet}
+          alt={game.name}
+          aspectRatio={COVER_ASPECT_RATIO}
+          fit='cover'
+          loading={loading}
+          decoding='async'
+        />
       )}
       <Card.Body>
         <Card.Title>{game.name}</Card.Title>
