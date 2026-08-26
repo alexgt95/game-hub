@@ -15,13 +15,14 @@ const GameCard = ({ game, loading = false, imgLoading = 'lazy' }: GameCardProps)
 
   return (
     <Card.Root borderRadius={10} overflow='hidden'>
-      <Skeleton loading={loading} aspectRatio={COVER_ASPECT_RATIO}>
+      <Skeleton loading={loading} aspectRatio={COVER_ASPECT_RATIO} width='100%'>
         {cover && (
           <Image
             src={cover.src}
             srcSet={cover.srcSet}
             alt={game?.name}
-            aspectRatio={COVER_ASPECT_RATIO}
+            width='100%'
+            height='100%'
             fit='cover'
             loading={imgLoading}
             decoding='async'

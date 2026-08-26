@@ -14,6 +14,11 @@ interface IgdbGame {
   aggregated_rating?: number;
 }
 
+interface IgdbGenre {
+  id: number;
+  name: string;
+}
+
 interface TokenCache {
   value: string;
   expiresAt: number;
@@ -34,27 +39,36 @@ async function getTwitchToken(clientId: string, clientSecret: string) {
   url.searchParams.set("grant_type", "client_credentials");
 
   const response = await fetch(url, { method: "POST" });
+  /* fetch no lanza error en respuestas HTTP 4xx/5xx — solo lo hace si falla la red.
+  Por eso hay que chequear response.ok manualmente y lanzar un error propio con el código
+  y el cuerpo de la respuesta para debug. */
   if (!response.ok) {
     const details = await response.text();
     throw new Error(`Twitch token failed: ${response.status} ${details}`);
   }
 
   const data = (await response.json()) as {
+    /* un token y sus segundos de vida. */
     access_token: string;
     expires_in: number;
   };
 
   tokenCache = {
+    /* el token y su fecha de expiración. */
     value: data.access_token,
+    /* restamos 60s para que el token no expire justo en el momento de usarlo. */
     expiresAt: Date.now() + (data.expires_in - 60) * 1000,
   };
 
   console.log(`[igdb] Twitch token ok, expires in ${data.expires_in}s`);
+  /* devolvemos el token para que se pueda usar en la siguiente petición. */
   return tokenCache.value;
 }
 
 async function fetchGames(clientId: string, clientSecret: string) {
+  /* obtenemos el token para la siguiente petición (usado o nuevo) */
   const accessToken = await getTwitchToken(clientId, clientSecret);
+  /* hacemos la petición a la API de IGDB. */
 
   const response = await fetch("https://api.igdb.com/v4/games", {
     method: "POST",
@@ -76,6 +90,28 @@ async function fetchGames(clientId: string, clientSecret: string) {
     results.slice(0, 3).map((game) => game.name)
   );
   return { count: results.length, results, source: "igdb" };
+}
+
+async function fetchGenres(clientId: string, clientSecret: string) {
+  const accessToken = await getTwitchToken(clientId, clientSecret);
+
+  const response = await fetch("https://api.igdb.com/v4/genres", {
+    method: "POST",
+    headers: {
+      "Client-ID": clientId,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: "fields id,name; sort name asc; limit 50;",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`IGDB failed: ${response.status} ${details}`);
+  }
+
+  const results = (await response.json()) as IgdbGenre[];
+  console.log(`[igdb] IGDB returned ${results.length} genres`);
+  return { count: results.length, results };
 }
 
 export function igdbApi(env: Record<string, string>): Plugin {
@@ -111,6 +147,50 @@ export function igdbApi(env: Record<string, string>): Plugin {
 
         try {
           const data = await fetchGames(clientId, clientSecret);
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(data));
+        } catch (error) {
+          console.error("[igdb] request failed:", error);
+          res.statusCode = 502;
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify({
+              error:
+                error instanceof Error ? error.message : "IGDB request failed",
+            })
+          );
+        }
+      });
+
+      server.middlewares.use("/api/genres", async (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+
+        const clientId = env.TWITCH_CLIENT_ID;
+        const clientSecret = env.TWITCH_CLIENT_SECRET;
+
+        if (!clientId || !clientSecret) {
+          console.error("[igdb] missing TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET");
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify({
+              error:
+                "Missing TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET in .env",
+            })
+          );
+          return;
+        }
+
+        console.log(
+          `[igdb] GET /api/genres  clientId=${clientId.slice(0, 6)}…`
+        );
+
+        try {
+          const data = await fetchGenres(clientId, clientSecret);
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify(data));
         } catch (error) {
