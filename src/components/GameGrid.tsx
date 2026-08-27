@@ -5,8 +5,7 @@ import GameCard from './GameCard';
 const SKELETON_COUNT = 8;
 
 const GameGrid = () => {
-  const { games, error, status } = useGames();
-  const isLoading = status === 'checking';
+  const { data: games, error, isLoading } = useGames();
 
   return (
     <>
