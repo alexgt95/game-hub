@@ -65,10 +65,15 @@ async function getTwitchToken(clientId: string, clientSecret: string) {
   return tokenCache.value;
 }
 
-async function fetchGames(clientId: string, clientSecret: string) {
+async function fetchGames(clientId: string, clientSecret: string, genreId?: string) {
   /* obtenemos el token para la siguiente petición (usado o nuevo) */
   const accessToken = await getTwitchToken(clientId, clientSecret);
   /* hacemos la petición a la API de IGDB. */
+
+  const whereClauses = ["rating_count != null", "cover != null"];
+  if (genreId) {
+    whereClauses.push(`genres = (${genreId})`);
+  }
 
   const response = await fetch("https://api.igdb.com/v4/games", {
     method: "POST",
@@ -76,7 +81,7 @@ async function fetchGames(clientId: string, clientSecret: string) {
       "Client-ID": clientId,
       Authorization: `Bearer ${accessToken}`,
     },
-    body: "fields *, id,name,cover.image_id,platforms.name,platforms.abbreviation,platforms.slug,platforms.platform_family; sort rating_count desc; where rating_count != null & cover != null; limit 20;",
+    body: `fields *, id,name,cover.image_id,platforms.name,platforms.abbreviation,platforms.slug,platforms.platform_family; sort rating_count desc; where ${whereClauses.join(" & ")}; limit 20;`,
   });
 
   if (!response.ok) {
@@ -141,12 +146,16 @@ export function igdbApi(env: Record<string, string>): Plugin {
           return;
         }
 
+        const { searchParams } = new URL(req.url ?? "", "http://localhost");
+        const genresParam = searchParams.get("genres");
+        const genreId = genresParam && /^\d+$/.test(genresParam) ? genresParam : undefined;
+
         console.log(
-          `[igdb] GET /api/games  clientId=${clientId.slice(0, 6)}…`
+          `[igdb] GET /api/games  clientId=${clientId.slice(0, 6)}…  genres=${genreId ?? "any"}`
         );
 
         try {
-          const data = await fetchGames(clientId, clientSecret);
+          const data = await fetchGames(clientId, clientSecret, genreId);
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify(data));
         } catch (error) {

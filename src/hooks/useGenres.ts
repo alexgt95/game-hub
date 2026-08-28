@@ -1,9 +1,7 @@
 import useData from "./useData";
+import { Genre } from "../types/Genre";
 
-export interface Genre {
-    id: number;
-    name: string;
-}
+export type { Genre };
 
 const useGenres = () => useData<Genre>('/genres');
 
