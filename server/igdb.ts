@@ -19,6 +19,12 @@ interface IgdbGenre {
   name: string;
 }
 
+interface IgdbPlatform {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 interface TokenCache {
   value: string;
   expiresAt: number;
@@ -65,7 +71,7 @@ async function getTwitchToken(clientId: string, clientSecret: string) {
   return tokenCache.value;
 }
 
-async function fetchGames(clientId: string, clientSecret: string, genreId?: string) {
+async function fetchGames(clientId: string, clientSecret: string, genreId?: string, platformId?: string) {
   /* obtenemos el token para la siguiente petición (usado o nuevo) */
   const accessToken = await getTwitchToken(clientId, clientSecret);
   /* hacemos la petición a la API de IGDB. */
@@ -73,6 +79,9 @@ async function fetchGames(clientId: string, clientSecret: string, genreId?: stri
   const whereClauses = ["rating_count != null", "cover != null"];
   if (genreId) {
     whereClauses.push(`genres = (${genreId})`);
+  }
+  if (platformId) {
+    whereClauses.push(`platforms = (${platformId})`);
   }
 
   const response = await fetch("https://api.igdb.com/v4/games", {
@@ -119,6 +128,28 @@ async function fetchGenres(clientId: string, clientSecret: string) {
   return { count: results.length, results };
 }
 
+async function fetchPlatforms(clientId: string, clientSecret: string) {
+  const accessToken = await getTwitchToken(clientId, clientSecret);
+
+  const response = await fetch("https://api.igdb.com/v4/platforms", {
+    method: "POST",
+    headers: {
+      "Client-ID": clientId,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: "fields id,name,slug; sort name asc; limit 100;",
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`IGDB failed: ${response.status} ${details}`);
+  }
+
+  const results = (await response.json()) as IgdbPlatform[];
+  console.log(`[igdb] IGDB returned ${results.length} platforms`);
+  return { count: results.length, results };
+}
+
 export function igdbApi(env: Record<string, string>): Plugin {
   return {
     name: "igdb-api",
@@ -149,13 +180,15 @@ export function igdbApi(env: Record<string, string>): Plugin {
         const { searchParams } = new URL(req.url ?? "", "http://localhost");
         const genresParam = searchParams.get("genres");
         const genreId = genresParam && /^\d+$/.test(genresParam) ? genresParam : undefined;
+        const platformsParam = searchParams.get("platforms");
+        const platformId = platformsParam && /^\d+$/.test(platformsParam) ? platformsParam : undefined;
 
         console.log(
-          `[igdb] GET /api/games  clientId=${clientId.slice(0, 6)}…  genres=${genreId ?? "any"}`
+          `[igdb] GET /api/games  clientId=${clientId.slice(0, 6)}…  genres=${genreId ?? "any"}  platforms=${platformId ?? "any"}`
         );
 
         try {
-          const data = await fetchGames(clientId, clientSecret, genreId);
+          const data = await fetchGames(clientId, clientSecret, genreId, platformId);
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify(data));
         } catch (error) {
@@ -200,6 +233,50 @@ export function igdbApi(env: Record<string, string>): Plugin {
 
         try {
           const data = await fetchGenres(clientId, clientSecret);
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(data));
+        } catch (error) {
+          console.error("[igdb] request failed:", error);
+          res.statusCode = 502;
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify({
+              error:
+                error instanceof Error ? error.message : "IGDB request failed",
+            })
+          );
+        }
+      });
+
+      server.middlewares.use("/api/platforms", async (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+
+        const clientId = env.TWITCH_CLIENT_ID;
+        const clientSecret = env.TWITCH_CLIENT_SECRET;
+
+        if (!clientId || !clientSecret) {
+          console.error("[igdb] missing TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET");
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify({
+              error:
+                "Missing TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET in .env",
+            })
+          );
+          return;
+        }
+
+        console.log(
+          `[igdb] GET /api/platforms  clientId=${clientId.slice(0, 6)}…`
+        );
+
+        try {
+          const data = await fetchPlatforms(clientId, clientSecret);
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify(data));
         } catch (error) {
