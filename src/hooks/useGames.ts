@@ -1,7 +1,6 @@
 import useData from "./useData";
 import { Platform as GamePlatform } from "../services/platforms";
-import { Genre } from "../types/Genre";
-import { Platform } from "../types/Platform";
+import { GameQuery } from "../App";
 
 export interface Game {
     id: number;
@@ -11,11 +10,11 @@ export interface Game {
     aggregated_rating?: number;
 }
 
-const useGames = (selectedGenre: Genre | null, selectedPlatform: Platform | null) =>
+const useGames = (gameQuery: GameQuery) =>
     useData<Game>(
         '/games',
-        { params: { genres: selectedGenre?.id, platforms: selectedPlatform?.id } },
-        [selectedGenre?.id, selectedPlatform?.id]
+        { params: { genres: gameQuery.genre?.id, platforms: gameQuery.platform?.id } },
+        [gameQuery.genre?.id, gameQuery.platform?.id]
     );
 
 export default useGames;
