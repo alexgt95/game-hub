@@ -30,6 +30,18 @@ interface TokenCache {
   expiresAt: number;
 }
 
+/* Traduce las opciones de SortSelector.tsx (heredadas de la API de RAWG) al
+   nombre de campo real que usa IGDB para ordenar resultados. */
+const SORT_OPTIONS: Record<string, string> = {
+  "": "rating_count desc",
+  "-added": "created_at desc",
+  name: "name asc",
+  "-released": "first_release_date desc",
+  "-metacritic": "hypes desc",
+  "-rating": "aggregated_rating desc",
+};
+const DEFAULT_SORT = SORT_OPTIONS[""];
+
 let tokenCache: TokenCache | null = null;
 
 async function getTwitchToken(clientId: string, clientSecret: string) {
@@ -71,7 +83,13 @@ async function getTwitchToken(clientId: string, clientSecret: string) {
   return tokenCache.value;
 }
 
-async function fetchGames(clientId: string, clientSecret: string, genreId?: string, platformId?: string) {
+async function fetchGames(
+  clientId: string,
+  clientSecret: string,
+  genreId?: string,
+  platformId?: string,
+  sortOrder?: string
+) {
   /* obtenemos el token para la siguiente petición (usado o nuevo) */
   const accessToken = await getTwitchToken(clientId, clientSecret);
   /* hacemos la petición a la API de IGDB. */
@@ -84,13 +102,15 @@ async function fetchGames(clientId: string, clientSecret: string, genreId?: stri
     whereClauses.push(`platforms = (${platformId})`);
   }
 
+  const sortClause = (sortOrder !== undefined && SORT_OPTIONS[sortOrder]) || DEFAULT_SORT;
+
   const response = await fetch("https://api.igdb.com/v4/games", {
     method: "POST",
     headers: {
       "Client-ID": clientId,
       Authorization: `Bearer ${accessToken}`,
     },
-    body: `fields *, id,name,cover.image_id,platforms.name,platforms.abbreviation,platforms.slug,platforms.platform_family; sort rating_count desc; where ${whereClauses.join(" & ")}; limit 20;`,
+    body: `fields *, id,name,cover.image_id,platforms.name,platforms.abbreviation,platforms.slug,platforms.platform_family; sort ${sortClause}; where ${whereClauses.join(" & ")}; limit 20;`,
   });
 
   if (!response.ok) {
@@ -182,13 +202,15 @@ export function igdbApi(env: Record<string, string>): Plugin {
         const genreId = genresParam && /^\d+$/.test(genresParam) ? genresParam : undefined;
         const platformsParam = searchParams.get("platforms");
         const platformId = platformsParam && /^\d+$/.test(platformsParam) ? platformsParam : undefined;
+        const sortOrderParam = searchParams.get("sortOrder");
+        const sortOrder = sortOrderParam !== null && sortOrderParam in SORT_OPTIONS ? sortOrderParam : undefined;
 
         console.log(
-          `[igdb] GET /api/games  clientId=${clientId.slice(0, 6)}…  genres=${genreId ?? "any"}  platforms=${platformId ?? "any"}`
+          `[igdb] GET /api/games  clientId=${clientId.slice(0, 6)}…  genres=${genreId ?? "any"}  platforms=${platformId ?? "any"}  sortOrder=${sortOrder ?? "default"}`
         );
 
         try {
-          const data = await fetchGames(clientId, clientSecret, genreId, platformId);
+          const data = await fetchGames(clientId, clientSecret, genreId, platformId, sortOrder);
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify(data));
         } catch (error) {
